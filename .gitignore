@@ -1,0 +1,9 @@
+# 忽略根目录下的 config.json 文件
+/config.json
+
+# 忽略 wiki 文件夹及其所有内容
+wiki/
+# 忽略 analyze 文件夹及其所有内容
+analyze/
+# 忽略 result 文件夹及其所有内容
+result/
