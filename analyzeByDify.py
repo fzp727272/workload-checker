@@ -20,7 +20,7 @@ def process_wiki_file(api_key: str, file_path: str,
     
     try:
         # 读取文件内容
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8-sig') as f:
             content = f.read().strip()
         
         if not content:
@@ -86,7 +86,7 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
     json_filename = f"{original_filename}_result.json"
     json_path = os.path.join(output_dir, json_filename)
     
-    with open(json_path, 'w', encoding='utf-8') as f:
+    with open(json_path, 'w', encoding='utf-8-sig') as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
     
     print(f"JSON结果已保存到: {json_path}")
@@ -130,7 +130,7 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
                     # 3. 写入 CSV（所有行都保留）
                     csv_filename = f"{Path(original_file_path).stem}_result.csv"
                     csv_path = os.path.join(output_dir, csv_filename)
-                    with open(csv_path, 'w', encoding='utf-8', newline='') as csvfile:
+                    with open(csv_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
                         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                         writer.writeheader()
                         writer.writerows(data_list)
@@ -154,7 +154,7 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
         if 'data' in result and 'outputs' in result['data']:
             outputs = result['data']['outputs']
             text_output_path = os.path.join(output_dir, f"{original_filename}_result.txt")
-            with open(text_output_path, 'w', encoding='utf-8') as f:
+            with open(text_output_path, 'w', encoding='utf-8-sig') as f:
                 for key, value in outputs.items():
                     f.write(f"=== {key} ===\n")
                     if isinstance(value, dict) or isinstance(value, list):
@@ -164,7 +164,7 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
         else:
             # 如果没有outputs，保存整个结果的简化版本
             text_output_path = os.path.join(output_dir, f"{original_filename}_result.txt")
-            with open(text_output_path, 'w', encoding='utf-8') as f:
+            with open(text_output_path, 'w', encoding='utf-8-sig') as f:
                 f.write(f"处理时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"原始文件: {original_file_path}\n")
                 f.write(f"结果概要: {json.dumps(result, ensure_ascii=False, indent=2)}\n")
