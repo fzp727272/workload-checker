@@ -1,0 +1,234 @@
+[
+  {
+    "category": "业务驱动型项目",
+    "items": [
+      {
+        "businessUnit": "CRM",
+        "projects": [
+          {
+            "projectName": "CNY抽奖",
+            "requirements": ["【MP】CNY 抽奖活动"],
+            "designer": "Waiting",
+            "po": "Fiona"
+          }
+        ]
+      },
+      {
+        "businessUnit": "Checkout",
+        "projects": [
+          {
+            "projectName": "DTC",
+            "requirements": ["仅退款-全履约方式"],
+            "designer": "Zhengpeng",
+            "po": "xiaoting"
+          }
+        ]
+      },
+      {
+        "businessUnit": "Production",
+        "projects": [
+          {
+            "projectName": "员工内卖",
+            "requirements": ["内卖B端"],
+            "designer": "Waiting",
+            "po": "Eason"
+          },
+          {
+            "projectName": "VR小程序",
+            "requirements": ["VR C端", "VR B端 (对齐jira名字，附上jira link@coco)"],
+            "designer": "Coco",
+            "po": "Mokora"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "category": "China Project",
+    "items": [
+      {
+        "businessUnit": "Community Project",
+        "projects": [
+          {
+            "projectName": "Community",
+            "requirements": [],
+            "designer": "Money",
+            "po": "April"
+          }
+        ]
+      },
+      {
+        "businessUnit": "Cicularity",
+        "projects": [
+          {
+            "projectName": "二手业务持续优化Buyback",
+            "requirements": [
+              "【门店助手App】B端效率优化",
+              "[Buyback]二手详情页优化",
+              "[Buyback] 促销活动PRD (only for 2026春节)",
+              "[Buyback] 同城跨店提货",
+              "[Buyback] 盘点管理",
+              "【buyback】Review report"
+            ],
+            "designer": "Emily",
+            "po": "Olivia"
+          },
+          {
+            "projectName": "租赁业务自有数字化解决方案Rental",
+            "requirements": ["【Rental】基于迪卡侬微信生态的租赁体系搭建（Q4聚焦基础信息和链路，Q1聚焦支付下单体验流程）"],
+            "designer": "Zhengpeng",
+            "po": "Olivia"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "category": "数字化能力建设",
+    "items": [
+      {
+        "businessUnit": "IC",
+        "projects": [
+          {
+            "projectName": "Search",
+            "requirements": ["srp分类筛选引导品类拓展"],
+            "designer": "Money",
+            "po": ""
+          },
+          {
+            "projectName": "UEMS专项",
+            "requirements": ["Buyback专项 调研计划", "CHCC 调研专项", "Community专项调研"],
+            "designer": "Sherry X",
+            "po": ""
+          }
+        ]
+      },
+      {
+        "businessUnit": "Digital",
+        "projects": [
+          {
+            "projectName": "Design system website",
+            "requirements": ["1.搭建Website"],
+            "designer": "Sherry S",
+            "po": ""
+          },
+          {
+            "projectName": "To C - Design system",
+            "requirements": ["2.Design Library - C端组件搭建"],
+            "designer": "Sherry S",
+            "po": ""
+          },
+          {
+            "projectName": "",
+            "requirements": ["4.Dev Library - 小程序设计&开发"],
+            "designer": "Sherry S",
+            "po": ""
+          },
+          {
+            "projectName": "To B - Design system",
+            "requirements": ["3.Design Library - B端组件搭建", "B端业务组件搭建"],
+            "designer": "Sherry S",
+            "po": ""
+          },
+          {
+            "projectName": "UEMS - Routine report",
+            "requirements": ["Me page问卷迭代&上线", "报告产出"],
+            "designer": "Sherry X",
+            "po": ""
+          }
+        ]
+      },
+      {
+        "businessUnit": "Digital IT",
+        "projects": [
+          {
+            "projectName": "Free - wifi",
+            "requirements": ["【H5】Free Wi-Fi登录"],
+            "designer": "Sherry S",
+            "po": "Niko"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "category": "创新与实验",
+    "items": [
+      {
+        "businessUnit": "",
+        "projects": [
+          {
+            "projectName": "AI平台（小跃）",
+            "requirements": ["以提升AI 小跃平台产品的产品使用率为目标，持续产品迭代\n1.小跃双端优化"],
+            "designer": "Coco",
+            "po": "Eason"
+          },
+          {
+            "projectName": "循环经济",
+            "requirements": ["自行车图片质量识别"],
+            "designer": "Zhengpeng",
+            "po": "Zhengpeng"
+          },
+          {
+            "projectName": "UEMS AI",
+            "requirements": ["UEMS用户原声反馈智能体"],
+            "designer": "Zhengpeng",
+            "po": ""
+          },
+          {
+            "projectName": "",
+            "requirements": [],
+            "designer": "Sherry X",
+            "po": ""
+          },
+          {
+            "projectName": "Vitamin x Tech AI",
+            "requirements": ["1.组件的自动化巡检\n2.自动化设计走查\n3.组件的自动化搭建"],
+            "designer": "Zhengpeng",
+            "po": ""
+          },
+          {
+            "projectName": "",
+            "requirements": [],
+            "designer": "Sherry S",
+            "po": "Sherry S"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "category": "UX Center",
+    "items": [
+      {
+        "businessUnit": "UX Center",
+        "projects": [
+          {
+            "projectName": "内部UX meeting",
+            "requirements": [],
+            "designer": "All",
+            "po": ""
+          },
+          {
+            "projectName": "Sharing & Training",
+            "requirements": [],
+            "designer": "All",
+            "po": ""
+          },
+          {
+            "projectName": "Digital年会",
+            "requirements": [],
+            "designer": "All",
+            "po": ""
+          },
+          {
+            "projectName": "On leave",
+            "requirements": [],
+            "designer": "Emily",
+            "po": ""
+          }
+        ]
+      }
+    ]
+  }
+]

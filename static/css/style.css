@@ -1,0 +1,112 @@
+/* 主样式 */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+}
+
+/* 状态指示器 */
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-ready {
+    background-color: #28a745;
+}
+
+.status-running {
+    background-color: #ffc107;
+    animation: pulse 1.5s infinite;
+}
+
+.status-error {
+    background-color: #dc3545;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* 卡片样式 */
+.card {
+    border: none;
+    border-radius: 12px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+/* 按钮样式 */
+.btn {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-2px);
+}
+
+/* 进度条动画 */
+.progress-bar {
+    transition: width 0.5s ease-in-out;
+}
+
+/* 日志区域 */
+.log-output {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.log-entry.info {
+    color: #17a2b8;
+}
+
+.log-entry.success {
+    color: #28a745;
+}
+
+.log-entry.warning {
+    color: #ffc107;
+}
+
+.log-entry.error {
+    color: #dc3545;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .card {
+        margin-bottom: 15px;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+    }
+}

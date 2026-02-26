@@ -1,0 +1,19 @@
+# Wiki报告生成器依赖
+# 基本依赖
+Flask==2.3.3
+requests==2.31.0
+
+# 数据处理
+pandas==1.5.3
+numpy==1.24.3
+
+# 网页解析
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Excel支持（可选）
+openpyxl==3.1.2
+xlrd==2.0.1
+
+# 开发工具（可选）
+python-dotenv==1.0.0

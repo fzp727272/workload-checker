@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>配置</title>
+</head>
+<body>
+    <h1>配置页面</h1>
+    <form action="/config" method="post">
+        <div>
+            <label>Base URL:</label>
+            <input type="text" name="base_url" value="{{ config.base_url }}">
+        </div>
+        <div>
+            <label>用户名:</label>
+            <input type="text" name="username" value="{{ config.username }}">
+        </div>
+        <div>
+            <label>API Token:</label>
+            <input type="password" name="api_token" value="{{ config.api_token }}">
+        </div>
+        <div>
+            <label>Page IDs (逗号分隔):</label>
+            <input type="text" name="page_ids" value="{{ config.page_ids|join(',') }}">
+        </div>
+        <button type="submit">保存配置</button>
+    </form>
+    <a href="/">返回首页</a>
+</body>
+</html>

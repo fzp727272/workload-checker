@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Wiki 报告生成器</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        textarea { width: 100%; height: 200px; font-family: monospace; }
+        button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
+        #log { background: #f4f4f4; padding: 10px; border: 1px solid #ccc; height: 300px; overflow-y: scroll; font-family: monospace; white-space: pre-wrap; }
+        .status { margin: 10px 0; font-weight: bold; }
+        #result {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        #result > div {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        #result ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #result li {
+            margin: 5px 0;
+        }
+        #result a {
+            text-decoration: none;
+            color: #0366d6;
+        }
+        #result a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>HelpSherry：Wiki 报告生成器</h1>
+    <p>配置页面 ID（每行一个）</p>
+    <form id="configForm">
+        <textarea id="page_ids" name="page_ids">{{ page_ids }}</textarea>
+        <br>
+        <button type="submit">生成报告</button>
+    </form>
+
+    <div id="taskStatus" class="status" style="display:none;"></div>
+    <div id="log" style="display:none;"></div>
+
+    <!-- 结果区域：始终可见，分为报告和 CSV 两个区块 -->
+    <div id="result">
+        <div id="reports-section">
+            <h3>生成的报告：</h3>
+            <ul id="report-list">
+                <li>等待生成文件...</li>
+            </ul>
+        </div>
+        <div id="csv-section">
+            <h3>生成的CSV文件：</h3>
+            <ul id="csv-list">
+                <li>等待生成文件...</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('configForm');
+        const pageIdsTextarea = document.getElementById('page_ids');
+        const logDiv = document.getElementById('log');
+        const statusDiv = document.getElementById('taskStatus');
+        const reportList = document.getElementById('report-list');
+        const csvList = document.getElementById('csv-list');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            logDiv.style.display = 'block';
+            logDiv.innerHTML = '';
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '任务已提交，正在启动...';
+
+            // 清空文件列表，显示等待状态
+            reportList.innerHTML = '<li>等待生成文件...</li>';
+            csvList.innerHTML = '<li>等待生成文件...</li>';
+
+            const formData = new FormData();
+            formData.append('page_ids', pageIdsTextarea.value);
+
+            try {
+                const response = await fetch('/run', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.error) {
+                    statusDiv.innerHTML = '错误: ' + data.error;
+                    return;
+                }
+                const taskId = data.task_id;
+                statusDiv.innerHTML = '任务运行中...';
+                pollLogs(taskId);
+            } catch (err) {
+                statusDiv.innerHTML = '提交失败: ' + err;
+            }
+        });
+
+        async function pollLogs(taskId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/logs/${taskId}`);
+                    const data = await response.json();
+                    if (data.error) {
+                        statusDiv.innerHTML = '错误: ' + data.error;
+                        clearInterval(interval);
+                        return;
+                    }
+
+                    logDiv.innerHTML = data.logs.join('\n');
+                    logDiv.scrollTop = logDiv.scrollHeight;
+
+                    // 无论任务状态如何，只要有文件数据就更新列表（实时展示）
+                    updateFileLists(data);
+
+                    if (data.status === 'completed') {
+                        statusDiv.innerHTML = '✅ 任务完成！';
+                        clearInterval(interval);
+                    } else if (data.status === 'failed') {
+                        statusDiv.innerHTML = '❌ 任务失败：' + (data.error || '未知错误');
+                        clearInterval(interval);
+                    }
+                } catch (err) {
+                    statusDiv.innerHTML = '轮询日志失败: ' + err;
+                    clearInterval(interval);
+                }
+            }, 2000);
+        }
+
+        // 更新报告和 CSV 文件列表
+        function updateFileLists(data) {
+            // 更新报告列表
+            reportList.innerHTML = '';
+            if (data.result && data.result.length > 0) {
+                data.result.forEach(r => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a href="/result/${r}" target="_blank">${r}</a>`;
+                    reportList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = '暂无报告';
+                reportList.appendChild(li);
+            }
+
+            // 更新 CSV 列表
+            csvList.innerHTML = '';
+            if (data.csv_files && data.csv_files.length > 0) {
+                data.csv_files.forEach(f => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a href="/analyze/${f}" target="_blank">${f}</a>`;
+                    csvList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = '暂无CSV文件';
+                csvList.appendChild(li);
+            }
+        }
+    </script>
+</body>
+</html>
