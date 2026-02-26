@@ -1,9 +1,9 @@
-# HELPSHERRY：周报wiki解析与分析框架
+# HELP-SHERRY：周报wiki解析与分析框架
 
 ## 主要功能
 
 ### 配置参数
-1. 所有的参数目前都在config.json文件中配置
+1. 所有的参数目前都在config.json文件中配置，config.json因为有APIkey安全限制不可上传，可pull代码之后找zhengpeng要一份放在根目录下面
 2. 参数有"base_url":获取wiki信息的链接；"username": wiki的账户名；"api_token":wiki的APItoken，在这里拿 https://id.atlassian.com/manage-profile/security/api-tokens"；"dify_api_key":dify的apikey；pageid：页面的pageid，比如“https://decathlon.atlassian.net/wiki/spaces/CHIN/pages/2338947945/W9_2026.02.27”这个中pages后面“2338947945”这段数字
 
 
@@ -28,4 +28,5 @@
 3. 后续可以根据需求来做定制，这个不难，不会代码的同学可以将表格的格式传给AI，让AI根据自己的需要做一个基于pandas的数据统计python脚本
 
 ## 目前问题
-1. dify的工作流存在输出
+1. dify的工作流存在输出幻觉问题，后面会尝试1.提示词优化 2.增加审核模块, 但是增加审核模块势必会把原来迟缓的速度继续拉满，建议前期还是人工去做下表格的review和修改，然后将表格存储进行后续分析
+2. 目前使用pp版本的dify会存在不稳定的情况，如果报错建议重试几次，同时不建议一下子传多个pageid（超过5个以上），这样可能会存在某个page报错的情况，建议工作方式为:周会来完run一遍大家的工时 -> 发布报告到工作群 -> 所有人确认修改 -> 底表存档 -> 老板有需求对底表进行统计
