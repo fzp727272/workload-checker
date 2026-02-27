@@ -170,14 +170,14 @@ def load_config(config_file: str = "config.json") -> Dict[str, Any]:
             "clean_files": False
         }
         
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, 'w', encoding='utf-8-sig') as f:
             json.dump(default_config, f, indent=2, ensure_ascii=False)
         
         print(f"已创建默认配置文件 {config_file}，请修改配置后重新运行程序。")
         exit(1)
     
     try:
-        with open(config_file, 'r', encoding='utf-8') as f:
+        with open(config_file, 'r', encoding='utf-8-sig') as f:
             config = json.load(f)
         
         # 验证必要配置项
@@ -246,7 +246,7 @@ def save_to_file(content: dict, folder: str = "wiki") -> str:
     filepath = os.path.join(folder, filename)
     
     try:
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, 'w', encoding='utf-8-sig') as f:
             f.write(f"页面ID: {content['page_id']}\n")
             f.write(f"标题: {content['title']}\n")
             f.write(f"版本: {content['version']}\n")
@@ -288,7 +288,7 @@ def save_batch_summary(contents: List[dict], folder: str = "wiki") -> str:
         })
     
     try:
-        with open(summary_file, 'w', encoding='utf-8') as f:
+        with open(summary_file, 'w', encoding='utf-8-sig') as f:
             json.dump(summary, f, ensure_ascii=False, indent=2)
         
         print(f"批量处理摘要已保存到: {summary_file}")

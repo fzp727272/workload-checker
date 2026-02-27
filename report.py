@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 def load_config(config_path: str = "config.json") -> Dict[str, Any]:
     """从config.json加载配置"""
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, 'r', encoding='utf-8-sig') as f:
             config = json.load(f)
         print(f"成功加载配置文件: {config_path}")
         return config
@@ -485,7 +485,7 @@ def save_report(markdown_content: str, output_dir: str = "result"):
     filepath = os.path.join(output_dir, filename)
     
     # 保存文件
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, 'w', encoding='utf-8-sig') as f:
         f.write(markdown_content)
     
     print(f"报告已保存到: {filepath}")

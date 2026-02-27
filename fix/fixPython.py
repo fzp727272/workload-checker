@@ -231,7 +231,7 @@ class SimpleReportGenerator:
         """加载简单配置"""
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
+                with open(self.config_file, 'r', encoding='utf-8-sig') as f:
                     return json.load(f)
             except:
                 pass
@@ -242,7 +242,7 @@ class SimpleReportGenerator:
             "output_format": "csv"
         }
         
-        with open(self.config_file, 'w', encoding='utf-8') as f:
+        with open(self.config_file, 'w', encoding='utf-8-sig') as f:
             json.dump(config, f, indent=2)
         
         return config
@@ -254,7 +254,7 @@ class SimpleReportGenerator:
         # 创建示例CSV
         csv_file = self.result_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         
-        with open(csv_file, 'w', encoding='utf-8', newline='') as f:
+        with open(csv_file, 'w', encoding='utf-8-sig', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['设计组', '项目', '设计师', '工时(h)', '状态'])
             writer.writerow(['设计部', '项目A', '张三', '40', '已完成'])
@@ -266,7 +266,7 @@ class SimpleReportGenerator:
         
         # 创建摘要文件
         summary_file = self.result_dir / f"summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        with open(summary_file, 'w', encoding='utf-8') as f:
+        with open(summary_file, 'w', encoding='utf-8-sig') as f:
             f.write(f"报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\\n")
             f.write("="*50 + "\\n")
             f.write("设计工时汇总\\n")
@@ -304,7 +304,7 @@ if __name__ == "__main__":
 '''
     
     app_file = Path("simple_report_generator.py")
-    with open(app_file, 'w', encoding='utf-8') as f:
+    with open(app_file, 'w', encoding='utf-8-sig') as f:
         f.write(app_content)
     
     # 设置为可执行（Unix-like系统）

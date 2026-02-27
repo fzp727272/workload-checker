@@ -144,7 +144,7 @@ class WikiReportGenerator:
     def preview_report(self, report_path: str):
         """预览报告内容"""
         try:
-            with open(report_path, 'r', encoding='utf-8') as f:
+            with open(report_path, 'r', encoding='utf-8-sig') as f:
                 lines = f.readlines()
                 
             print("\n📋 报告预览:")
@@ -195,7 +195,7 @@ def main():
         print(f"错误: 配置文件 {config_file} 不存在")
         print("正在创建默认配置文件...")
         
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(config_file, 'w', encoding='utf-8-sig') as f:
             json.dump(default_config, f, ensure_ascii=False, indent=2)
         
         print(f"已创建配置文件: {config_file}")
@@ -204,7 +204,7 @@ def main():
     
     # 加载配置
     try:
-        with open(config_file, 'r', encoding='utf-8') as f:
+        with open(config_file, 'r', encoding='utf-8-sig') as f:
             config = json.load(f)
     except Exception as e:
         print(f"读取配置文件时出错: {e}")

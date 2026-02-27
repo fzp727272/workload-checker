@@ -72,6 +72,7 @@ def process_wiki_file(api_key: str, file_path: str,
 def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) -> Optional[str]:
     """
     将处理结果保存到文件，包括JSON和CSV格式
+    要求：只输出13个固定字段并按顺序排列，其余字段丢弃
     
     Returns:
         生成的CSV文件路径，如果未生成则返回None
@@ -93,7 +94,8 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
     
     csv_path = None  # 初始化CSV路径
     
-    # 2. 尝试从JSON中提取structured_output.data并保存为CSV
+    # 2. 从JSON中提取structured_output.data并生成CSV
+    #    只保留13个指定字段，按顺序排列
     try:
         if ('data' in result and
             'outputs' in result['data'] and
@@ -107,36 +109,59 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
                 data_list = structured_output['data']
 
                 if data_list:
-                    # 1. 收集所有出现的字段
-                    all_fields = set()
-                    for row in data_list:
-                        all_fields.update(row.keys())
-                    fieldnames = sorted(list(all_fields))  # 排序使列顺序固定
+                    # 定义必须的13个字段及顺序
+                    required_fields = [
+                        "week_label",
+                        "date_range",
+                        "businessUnit",
+                        "category",
+                        "projectName",
+                        "requirements",
+                        "designer",
+                        "po",
+                        "task",
+                        "task_status",
+                        "task_time",
+                        "time_horizon",
+                        "detail"
+                    ]
 
-                    # 2. 检查每行缺少的字段，并记录警告
-                    missing_warnings = []
+                    # 构造新的数据列表：每行只保留required_fields中的字段
+                    filtered_data = []
+                    missing_fields_count = 0
                     for idx, row in enumerate(data_list):
-                        row_fields = set(row.keys())
-                        missing = all_fields - row_fields
+                        new_row = {}
+                        for field in required_fields:
+                            # 如果原始行包含该字段，取值；否则填充空字符串
+                            value = row.get(field, "")
+                            # 如果字段值是列表，转换为JSON字符串以便CSV存储
+                            if isinstance(value, (list, dict)):
+                                value = json.dumps(value, ensure_ascii=False)
+                            new_row[field] = value
+                        filtered_data.append(new_row)
+
+                        # 统计缺失字段（可选，用于警告）
+                        missing = [f for f in required_fields if f not in row]
                         if missing:
-                            missing_warnings.append((idx, missing, row))
+                            missing_fields_count += 1
+                            if missing_fields_count <= 5:  # 只打印前5个警告
+                                print(f"  行 {idx+1}: 缺失字段 -> {missing}")
+                            elif missing_fields_count == 6:
+                                print("  ... 更多缺失字段警告已省略")
 
-                    if missing_warnings:
-                        print(f"警告: 发现 {len(missing_warnings)} 行存在缺失字段（已自动填充空值）:")
-                        for idx, missing, row in missing_warnings:
-                            print(f"  行 {idx+1}: 缺失字段 -> {sorted(missing)}")
-                            print(f"      行内容预览: {str(row)[:200]}...")
+                    if missing_fields_count > 0:
+                        print(f"警告: 共有 {missing_fields_count} 行存在缺失字段，已自动填充空值")
 
-                    # 3. 写入 CSV（所有行都保留）
+                    # 写入CSV，字段顺序使用required_fields
                     csv_filename = f"{Path(original_file_path).stem}_result.csv"
                     csv_path = os.path.join(output_dir, csv_filename)
                     with open(csv_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
-                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                        writer = csv.DictWriter(csvfile, fieldnames=required_fields)
                         writer.writeheader()
-                        writer.writerows(data_list)
+                        writer.writerows(filtered_data)
 
                     print(f"CSV结果已保存到: {csv_path}")
-                    print(f"CSV包含 {len(data_list)} 行数据，字段数: {len(fieldnames)}")
+                    print(f"CSV包含 {len(filtered_data)} 行数据，字段数: {len(required_fields)}")
                     return csv_path
                 else:
                     print("警告: structured_output.data 是空列表，不生成CSV文件")
@@ -145,32 +170,6 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
     except Exception as e:
         print(f"警告: 生成CSV文件时发生错误: {e}")
 
-    return None  # 未生成 CSV 时返回 None
-    
-    # # 3. 同时保存一个简化的文本版本（保留原有功能）
-    # text_output_path = os.path.join(output_dir, f"{original_filename}_result.txt")
-    try:
-        # 尝试提取工作流输出
-        if 'data' in result and 'outputs' in result['data']:
-            outputs = result['data']['outputs']
-            text_output_path = os.path.join(output_dir, f"{original_filename}_result.txt")
-            with open(text_output_path, 'w', encoding='utf-8-sig') as f:
-                for key, value in outputs.items():
-                    f.write(f"=== {key} ===\n")
-                    if isinstance(value, dict) or isinstance(value, list):
-                        f.write(f"{json.dumps(value, ensure_ascii=False, indent=2)}\n\n")
-                    else:
-                        f.write(f"{value}\n\n")
-        else:
-            # 如果没有outputs，保存整个结果的简化版本
-            text_output_path = os.path.join(output_dir, f"{original_filename}_result.txt")
-            with open(text_output_path, 'w', encoding='utf-8-sig') as f:
-                f.write(f"处理时间: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"原始文件: {original_file_path}\n")
-                f.write(f"结果概要: {json.dumps(result, ensure_ascii=False, indent=2)}\n")
-    except Exception as e:
-        print(f"警告: 保存文本版本时发生错误: {e}")
-    
     # 如果没有生成CSV，返回None
     return None
 def get_wiki_files(wiki_dir: str = "wiki") -> List[str]:
