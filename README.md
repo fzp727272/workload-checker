@@ -4,8 +4,15 @@
 
 ### 配置参数
 1. 所有的参数目前都在config.json文件中配置，config.json因为有APIkey安全限制不可上传，可pull代码之后找zhengpeng要一份放在根目录下面
-2. 参数有"base_url":获取wiki信息的链接；"username": wiki的账户名；"api_token":wiki的APItoken，在这里拿 https://id.atlassian.com/manage-profile/security/api-tokens"；"dify_api_key":dify的apikey；pageid：页面的pageid，比如“https://decathlon.atlassian.net/wiki/spaces/CHIN/pages/2338947945/W9_2026.02.27”这个中pages后面“2338947945”这段数字
+2. 参数有"base_url":获取wiki信息的链接；
+"username": wiki的账户名；
+"api_token":wiki的APItoken（在这里拿 https://id.atlassian.com/manage-profile/security/api-tokens"）；
+"dify_api_key":dify的apikey；pageid：页面的pageid
 
+### 项目与人员映射
+1. 按照沈姐的指导，项目的关系按照“项目分类（DCGC，BCP，HR …）-项目类型-domain-赋能BU-项目名称- Designer-PO-需求名称-detail”这样的一个层级树的顺序去进行映射
+2. 如果你的项目匹配有问题，大概率因为在项目映射表上存在问题，请及时更新dify上的项目映射表
+3. 项目映射表是一个json格式变量存在dify的环境变量configuration里面
 
 ### 获取wiki
 1. 处理脚本为getWiki.py文件，是通过confluence的API来通过wiki中pageID来获取
@@ -26,6 +33,8 @@
 1. 处理脚本为report.py,通过python分析表格来做数据统计
 2. 目前会根据几个维度来进行统计，每个设计师的工时，项目工时，业务部门工时等
 3. 后续可以根据需求来做定制，这个不难，不会代码的同学可以将表格的格式传给AI，让AI根据自己的需要做一个基于pandas的数据统计python脚本
+
+
 
 ## 目前问题
 1. dify的工作流存在输出幻觉问题，后面会尝试1.提示词优化 2.增加审核模块, 但是增加审核模块势必会把原来迟缓的速度继续拉满，建议前期还是人工去做下表格的review和修改，然后将表格存储进行后续分析
