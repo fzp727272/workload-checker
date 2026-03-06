@@ -5,6 +5,7 @@ import json
 import os
 import time
 from typing import List, Optional, Dict, Any
+from html.parser import HTMLParser
 
 class ConfluenceExtractor:
     def __init__(self, base_url: str, username: str, api_token: str, max_retries: int = 2):
@@ -27,41 +28,71 @@ class ConfluenceExtractor:
         """
         通过页面ID获取文章内容，支持重试机制
         """
-        url = f"{self.base_url}/rest/api/content/{page_id}"
-        params = {
-            'expand': 'body.view,version'
-        }
-        
+        # 优先使用 v2 API，拿 storage 格式并转换为 Markdown
+        url_v2 = f"{self.base_url}/api/v2/pages/{page_id}"
+        params_v2 = {"body-format": "storage"}
+
+        # 兼容旧接口兜底
+        url_v1 = f"{self.base_url}/rest/api/content/{page_id}"
+        params_v1 = {"expand": "body.view,version"}
+
         for attempt in range(self.max_retries + 1):
             try:
                 response = requests.get(
-                    url, 
-                    auth=self.auth, 
+                    url_v2,
+                    auth=self.auth,
                     headers=self.headers,
-                    params=params,
+                    params=params_v2,
                     timeout=30
                 )
+
+                if response.status_code == 404:
+                    # 某些环境没有 v2，回退到 v1
+                    response = requests.get(
+                        url_v1,
+                        auth=self.auth,
+                        headers=self.headers,
+                        params=params_v1,
+                        timeout=30
+                    )
+
                 response.raise_for_status()
-                
                 data = response.json()
-                
-                # 提取HTML内容
-                html_content = data['body']['view']['value']
-                
-                # 提取纯文本
-                plain_text = self.extract_plain_text(html_content)
-                
+
+                # v2: body.storage.value；v1: body.view.value
+                html_content = (
+                    ((data.get("body") or {}).get("storage") or {}).get("value")
+                    or ((data.get("body") or {}).get("view") or {}).get("value")
+                    or ""
+                )
+
+                markdown_content = html_to_md(html_content)
+                if not markdown_content:
+                    markdown_content = self.extract_plain_text(html_content)
+
+                title = data.get("title", f"page_{page_id}")
+                version = (
+                    (data.get("version") or {}).get("number")
+                    if isinstance(data.get("version"), dict)
+                    else data.get("version", "")
+                )
+
+                links = data.get("_links") if isinstance(data, dict) else {}
+                base = links.get("base") if isinstance(links, dict) else ""
+                webui = links.get("webui") if isinstance(links, dict) else ""
+                page_url = f"{base}{webui}" if base and webui else f"{self.base_url}/pages/viewpage.action?pageId={page_id}"
+
                 return {
-                    'title': data['title'],
-                    'content': plain_text,
-                    'version': data['version']['number'],
-                    'url': f"{self.base_url}/pages/viewpage.action?pageId={page_id}",
-                    'page_id': page_id
+                    "title": title,
+                    "content": markdown_content,  # 这里改为 Markdown 内容
+                    "version": version,
+                    "url": page_url,
+                    "page_id": page_id
                 }
-                
+
             except requests.exceptions.RequestException as e:
                 if attempt < self.max_retries:
-                    wait_time = 2 ** attempt  # 指数退避
+                    wait_time = 2 ** attempt
                     print(f"请求错误，{wait_time}秒后重试: {e}")
                     time.sleep(wait_time)
                 else:
@@ -73,7 +104,7 @@ class ConfluenceExtractor:
             except Exception as e:
                 print(f"未知错误: {e}")
                 return None
-        
+
         return None
     
     def batch_get_pages(self, page_ids: List[str]) -> List[dict]:
@@ -152,6 +183,177 @@ class ConfluenceExtractor:
         text = re.sub(r'\s+', ' ', text)
         
         return text.strip()
+
+class TableParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.tables = []
+        self.current_table = None
+        self.current_row = None
+        self.current_cell = None
+        self.in_table = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self.in_table = True
+            self.current_table = []
+        elif tag == "tr" and self.in_table:
+            self.current_row = []
+        elif tag in ("th", "td") and self.current_row is not None:
+            self.current_cell = {"tag": tag, "content": ""}
+
+    def handle_endtag(self, tag):
+        if tag == "table" and self.in_table:
+            if self.current_table:
+                self.tables.append(self.current_table)
+            self.current_table = None
+            self.in_table = False
+        elif tag == "tr" and self.current_row is not None:
+            if self.current_row:
+                self.current_table.append(self.current_row)
+            self.current_row = None
+        elif tag in ("th", "td") and self.current_cell is not None:
+            self.current_row.append(self.current_cell)
+            self.current_cell = None
+
+    def handle_data(self, data):
+        if self.current_cell is not None:
+            self.current_cell["content"] += data.strip()
+
+
+def table_to_markdown(table) -> str:
+    if not table:
+        return ""
+
+    for row in table:
+        for cell in row:
+            cell["content"] = re.sub(r"\s+", " ", cell["content"]).strip()
+
+    max_cols = max(len(row) for row in table)
+    for row in table:
+        while len(row) < max_cols:
+            row.append({"tag": "td", "content": ""})
+
+    has_header = table and all(cell["tag"] == "th" for cell in table[0])
+
+    lines = []
+    for i, row in enumerate(table):
+        cells = [cell["content"] for cell in row]
+        lines.append("| " + " | ".join(cells) + " |")
+        if i == 0 and has_header:
+            lines.append("| " + " | ".join(["---"] * max_cols) + " |")
+
+    return "\n".join(lines)
+
+
+def normalize_html(html: str) -> str:
+    h = html
+
+    h = re.sub(
+        r"<ac:layout[^>]*>|</ac:layout[^>]*>|<ac:layout-section[^>]*>|</ac:layout-section>|<ac:layout-cell>|</ac:layout-cell>",
+        "<div>",
+        h,
+        flags=re.I,
+    )
+    h = re.sub(r"<colgroup>[\s\S]*?</colgroup>|<col[^>]*/?>", "", h, flags=re.I)
+
+    h = re.sub(
+        r"<ac:structured-macro[^>]*ac:name=\"code\"[^>]*>([\s\S]*?)</ac:structured-macro>",
+        lambda m: "```\n"
+        + (
+            re.search(r"<!\[CDATA\[([\s\S]*?)\]\]>", m.group(1), re.I).group(1)
+            if re.search(r"<!\[CDATA\[", m.group(1), re.I)
+            else re.sub(r"<[^>]+>", "", m.group(1))
+        )
+        + "\n```",
+        h,
+        flags=re.I,
+    )
+
+    h = re.sub(
+        r"<ac:structured-macro[^>]*ac:name=\"(?:info|note|warning|tip|panel)\"[^>]*>([\s\S]*?)</ac:structured-macro>",
+        lambda m: "> "
+        + re.sub(
+            r"<[^>]+>",
+            "",
+            re.search(r"<ac:rich-text-body>([\s\S]*?)</ac:rich-text-body>", m.group(1), re.I).group(1)
+            if re.search(r"<ac:rich-text-body>", m.group(1), re.I)
+            else m.group(1),
+        ).strip(),
+        h,
+        flags=re.I,
+    )
+
+    h = re.sub(r"<ac:task-list>", "<ul>", h, flags=re.I)
+    h = re.sub(r"</ac:task-list>", "</ul>", h, flags=re.I)
+    h = re.sub(
+        r"<ac:task>([\s\S]*?)</ac:task>",
+        lambda m: (
+            "<li>"
+            + ("[x] " if re.search(r"<ac:task-status>([\s\S]*?)</ac:task-status>", m.group(1), re.I)
+               and "complete" in re.search(r"<ac:task-status>([\s\S]*?)</ac:task-status>", m.group(1), re.I).group(1).lower()
+               else "[ ] ")
+            + re.sub(
+                r"<[^>]+>",
+                "",
+                re.search(r"<ac:task-body>([\s\S]*?)</ac:task-body>", m.group(1), re.I).group(1)
+                if re.search(r"<ac:task-body>", m.group(1), re.I)
+                else m.group(1),
+            )
+            + "</li>"
+        ),
+        h,
+        flags=re.I,
+    )
+
+    h = re.sub(r"</?(?:ac|ri):[^>]*>|<!\[CDATA\[|\]\]>", "", h, flags=re.I)
+    h = re.sub(r"<ac:parameter[^>]*>[\s\S]*?</ac:parameter>", "", h, flags=re.I)
+    h = re.sub(r"<ac:rich-text-body>|</ac:rich-text-body>", "", h, flags=re.I)
+
+    return h
+
+
+def html_to_md(html: str) -> str:
+    h = normalize_html(html)
+
+    parser = TableParser()
+    parser.feed(h)
+    for table in parser.tables:
+        md_table = table_to_markdown(table)
+        table_match = re.search(r"<table[^>]*>[\s\S]*?</table>", h, flags=re.I)
+        if table_match:
+            h = h.replace(table_match.group(0), f"\n{md_table}\n", 1)
+
+    for i in range(1, 7):
+        h = re.sub(
+            rf"<h{i}[^>]*>(.*?)</h{i}>",
+            lambda m, level=i: "\n" + "#" * level + " " + re.sub(r"<[^>]+>", "", m.group(1)).strip() + "\n",
+            h,
+            flags=re.S | re.I,
+        )
+
+    h = re.sub(r"<strong>(.*?)</strong>", r"**\1**", h, flags=re.S | re.I)
+    h = re.sub(r"<em>(.*?)</em>", r"*\1*", h, flags=re.S | re.I)
+    h = re.sub(r"<a[^>]*href=\"([^\"]*)\"[^>]*>(.*?)</a>", r"[\2](\1)", h, flags=re.S | re.I)
+    h = re.sub(r"<li[^>]*>(.*?)</li>", lambda m: "- " + re.sub(r"<[^>]+>", "", m.group(1)).strip(), h, flags=re.S | re.I)
+
+    h = re.sub(r"</?table[^>]*>|</?tbody>|</?thead>|</?tr[^>]*>|</?th[^>]*>|</?td[^>]*>", "", h, flags=re.I)
+    h = re.sub(r"</?[ou]l[^>]*>", "\n", h, flags=re.I)
+    h = re.sub(r"<br\s*/?>", "\n", h, flags=re.I)
+    h = re.sub(r"</?p[^>]*>|</?div[^>]*>|</?span[^>]*>", "\n", h, flags=re.I)
+    h = re.sub(r"<[^>]+>", "", h)
+    h = re.sub(r"\n{3,}", "\n\n", h)
+
+    h = re.sub(r"&nbsp;", " ", h)
+    h = re.sub(r"&lt;", "<", h)
+    h = re.sub(r"&gt;", ">", h)
+    h = re.sub(r"&amp;", "&", h)
+    h = re.sub(r"&ldquo;|&rdquo;", "\"", h)
+    h = re.sub(r"&lsquo;|&rsquo;", "'", h)
+    h = re.sub(r"&rarr;", "→", h)
+    h = re.sub(r"&middot;", "·", h)
+
+    return h.strip()
 
 def load_config(config_file: str = "config.json") -> Dict[str, Any]:
     """
