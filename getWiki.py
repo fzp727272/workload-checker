@@ -7,6 +7,28 @@ import time
 from typing import List, Optional, Dict, Any
 from html.parser import HTMLParser
 
+def extract_page_id(page_id_or_url: str) -> str:
+    """
+    支持直接输入页面ID或URL，自动提取ID
+    """
+    # 如果是纯数字，直接返回
+    if page_id_or_url.isdigit():
+        return page_id_or_url
+    # 尝试从URL中提取ID
+    match = re.search(r'/pages/(\d+)', page_id_or_url)
+    if match:
+        return match.group(1)
+    # 兼容旧格式
+    match = re.search(r'pageId=(\d+)', page_id_or_url)
+    if match:
+        return match.group(1)
+    # 兼容新版URL
+    match = re.search(r'/(\d+)(?:/|$)', page_id_or_url)
+    if match:
+        return match.group(1)
+    # 默认返回原始输入
+    return page_id_or_url
+
 class ConfluenceExtractor:
     def __init__(self, base_url: str, username: str, api_token: str, max_retries: int = 2):
         """
@@ -28,6 +50,9 @@ class ConfluenceExtractor:
         """
         通过页面ID获取文章内容，支持重试机制
         """
+        # 支持直接输入URL，自动提取ID
+        page_id = extract_page_id(page_id)
+
         # 优先使用 v2 API，拿 storage 格式并转换为 Markdown
         url_v2 = f"{self.base_url}/api/v2/pages/{page_id}"
         params_v2 = {"body-format": "storage"}
@@ -115,8 +140,9 @@ class ConfluenceExtractor:
         total = len(page_ids)
         
         for i, page_id in enumerate(page_ids, 1):
+            real_page_id = extract_page_id(page_id)
             print(f"正在获取页面 {i}/{total}: {page_id}...")
-            content = self.get_page_content(page_id)
+            content = self.get_page_content(real_page_id)
             if content:
                 results.append(content)
                 print(f"  成功: {content['title']}")
@@ -193,7 +219,7 @@ class TableParser(HTMLParser):
         self.current_cell = None
         self.in_table = False
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag, _):
         if tag == "table":
             self.in_table = True
             self.current_table = []
@@ -583,7 +609,7 @@ def main():
                     if choice.isdigit():
                         index = int(choice) - 1
                         if 0 <= index < len(results):
-                            page_id = results[index]['id']
+                            page_id = extract_page_id(results[index].get('id', ''))
                             content = extractor.get_page_content(page_id)
                             
                             if content:

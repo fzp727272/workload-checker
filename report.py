@@ -115,19 +115,57 @@ def read_csv_files(file_paths: List[str]) -> pd.DataFrame:
         return pd.DataFrame()
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-    """数据清洗和处理"""
-    # 复制原始数据
+    """数据清洗和处理，兼容新数据格式"""
     cleaned_df = df.copy()
-    
+
+    # 字段映射：新数据格式 -> 旧代码字段
+    column_map = {
+        'requirement_time': 'task_time',
+        'BU': 'businessUnit',
+        'category': 'category',
+        'designer': 'designer',
+        'requirement_status': 'task_status',
+        'week_label': 'week_label',
+        'date_range': 'date_range',
+        'time_horizon': 'time_horizon',
+    }
+
+    # 兼容新表格格式，直接重命名字段
+    for src, dst in column_map.items():
+        if src in cleaned_df.columns:
+            cleaned_df[dst] = cleaned_df[src]
+
+    # requirement 字段同时用于项目名称与任务名称
+    if 'requirement' in cleaned_df.columns:
+        cleaned_df['projectName'] = cleaned_df['requirement']
+        cleaned_df['task'] = cleaned_df['requirement']
+    elif 'projectName' in cleaned_df.columns:
+        cleaned_df['requirement'] = cleaned_df['projectName']
+        cleaned_df['task'] = cleaned_df['projectName']
+    else:
+        cleaned_df['requirement'] = None
+        cleaned_df['projectName'] = None
+        cleaned_df['task'] = None
+
+    # 确保所有需要的列都存在
+    required_columns = [
+        'task_time', 'businessUnit', 'category', 'projectName', 'requirement',
+        'designer', 'task_status', 'week_label', 'date_range', 'task', 'time_horizon'
+    ]
+    for col in required_columns:
+        if col not in cleaned_df.columns:
+            if col == 'task_time':
+                cleaned_df[col] = 0
+            else:
+                cleaned_df[col] = None
+
     # 处理工时数据：转换为数值类型
     def parse_task_time(time_val):
         if pd.isna(time_val):
             return 0
         try:
-            # 处理可能包含非数字字符的情况
             if isinstance(time_val, str):
-                # 提取数字部分
-                numbers = re.findall(r'\d+', str(time_val))
+                numbers = re.findall(r'\d+\.?\d*', str(time_val))
                 if numbers:
                     return float(numbers[0])
                 else:
@@ -135,20 +173,21 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
             return float(time_val)
         except:
             return 0
-    
+
     cleaned_df['task_time'] = cleaned_df['task_time'].apply(parse_task_time)
-    
+
     # 填充空值
     cleaned_df['businessUnit'] = cleaned_df['businessUnit'].fillna('未分类')
     cleaned_df['category'] = cleaned_df['category'].fillna('未分类')
     cleaned_df['projectName'] = cleaned_df['projectName'].fillna('未命名项目')
+    cleaned_df['requirement'] = cleaned_df['requirement'].fillna('未命名需求')
     cleaned_df['designer'] = cleaned_df['designer'].fillna('未知设计师')
     cleaned_df['task_status'] = cleaned_df['task_status'].fillna('未记录')
-    
-    # 处理日期范围
     cleaned_df['week_label'] = cleaned_df['week_label'].fillna('未知周期')
     cleaned_df['date_range'] = cleaned_df['date_range'].fillna('未知日期')
-    
+    cleaned_df['task'] = cleaned_df['task'].fillna('未知任务')
+    cleaned_df['time_horizon'] = cleaned_df['time_horizon'].fillna('未知周期')
+
     return cleaned_df
 
 def generate_designer_summary(df: pd.DataFrame) -> Dict[str, Any]:
@@ -162,46 +201,46 @@ def generate_designer_summary(df: pd.DataFrame) -> Dict[str, Any]:
         designer_tasks = df[df['designer'] == designer]
         total_hours = designer_tasks['task_time'].sum()
         
-        # 获取项目列表（过滤NaN值）
-        project_list = designer_tasks['projectName'].dropna().unique().tolist()
-        project_count = len(project_list)
+        # 获取需求列表（过滤NaN值）
+        requirement_list = designer_tasks['requirement'].dropna().unique().tolist()
+        requirement_count = len(requirement_list)
         
-        # 确保项目名称都是字符串
-        project_list = [str(p) for p in project_list]
+        # 确保需求名称都是字符串
+        requirement_list = [str(p) for p in requirement_list]
         
         designer_summary[designer] = {
             'total_hours': total_hours,
-            'project_count': project_count,
-            'projects': project_list
+            'project_count': requirement_count,
+            'projects': requirement_list
         }
     
     return designer_summary
 
 def generate_project_summary(df: pd.DataFrame) -> Dict[str, Any]:
-    """生成项目工时分布"""
+    """生成需求工时分布"""
     project_summary = {}
     
-    for project in df['projectName'].unique():
-        if pd.isna(project) or project == '未命名项目':
+    for requirement in df['requirement'].unique():
+        if pd.isna(requirement) or requirement == '未命名需求':
             continue
             
-        project_tasks = df[df['projectName'] == project]
-        total_hours = project_tasks['task_time'].sum()
+        requirement_tasks = df[df['requirement'] == requirement]
+        total_hours = requirement_tasks['task_time'].sum()
         
-        # 获取项目相关信息
-        if not project_tasks.empty:
-            category = project_tasks['category'].iloc[0] if 'category' in project_tasks.columns else '未分类'
-            business_unit = project_tasks['businessUnit'].iloc[0] if 'businessUnit' in project_tasks.columns else '未分类'
+        # 获取需求相关信息
+        if not requirement_tasks.empty:
+            category = requirement_tasks['category'].iloc[0] if 'category' in requirement_tasks.columns else '未分类'
+            business_unit = requirement_tasks['businessUnit'].iloc[0] if 'businessUnit' in requirement_tasks.columns else '未分类'
             
             # 获取设计师列表（过滤NaN值）
-            designers = project_tasks['designer'].dropna().unique().tolist()
+            designers = requirement_tasks['designer'].dropna().unique().tolist()
             designers = [str(d) for d in designers if d != '未知设计师']
             
             # 获取状态列表（过滤NaN值）
-            statuses = project_tasks['task_status'].dropna().unique().tolist()
+            statuses = requirement_tasks['task_status'].dropna().unique().tolist()
             statuses = [str(s) for s in statuses]
             
-            project_summary[project] = {
+            project_summary[requirement] = {
                 'total_hours': total_hours,
                 'category': category,
                 'business_unit': business_unit,
@@ -222,17 +261,17 @@ def generate_department_summary(df: pd.DataFrame) -> Dict[str, Any]:
         dept_tasks = df[df['businessUnit'] == dept]
         total_hours = dept_tasks['task_time'].sum()
         
-        # 获取项目列表（过滤NaN值）
-        projects = dept_tasks['projectName'].dropna().unique().tolist()
-        project_count = len(projects)
+        # 获取需求列表（过滤NaN值）
+        requirements = dept_tasks['requirement'].dropna().unique().tolist()
+        requirement_count = len(requirements)
         
-        # 确保项目名称都是字符串
-        projects = [str(p) for p in projects]
+        # 确保需求名称都是字符串
+        requirements = [str(p) for p in requirements]
         
         department_summary[dept] = {
             'total_hours': total_hours,
-            'project_count': project_count,
-            'projects': projects
+            'project_count': requirement_count,
+            'projects': requirements
         }
     
     return department_summary
@@ -244,6 +283,14 @@ def generate_week_summary(df: pd.DataFrame) -> Dict[str, Any]:
         'next_week': []
     }
     
+    # 获取week_label（周期信息），用于markdown报告
+    week_label = None
+    if 'week_label' in df.columns and not df['week_label'].isna().all():
+        week_label = df['week_label'].dropna().iloc[0]
+    else:
+        week_label = "未知周期"
+    week_summary['week_label'] = week_label
+
     # 分离本周和下周工作
     if 'time_horizon' in df.columns:
         current_week_tasks = df[df['time_horizon'] == '本周工作']
@@ -251,19 +298,21 @@ def generate_week_summary(df: pd.DataFrame) -> Dict[str, Any]:
         
         for _, task in current_week_tasks.iterrows():
             week_summary['current_week'].append({
-                'project': task.get('projectName', '未知项目'),
+                'project': task.get('requirement', '未知需求'),
                 'task': task.get('task', '未知任务'),
                 'designer': task.get('designer', '未知设计师'),
                 'hours': task.get('task_time', 0),
-                'status': task.get('task_status', '未记录')
+                'status': task.get('task_status', '未记录'),
+                'week_label': task.get('week_label', week_label)
             })
         
         for _, task in next_week_tasks.iterrows():
             week_summary['next_week'].append({
-                'project': task.get('projectName', '未知项目'),
+                'project': task.get('requirement', '未知需求'),
                 'task': task.get('task', '未知任务'),
                 'designer': task.get('designer', '未知设计师'),
-                'hours': task.get('task_time', 0)
+                'hours': task.get('task_time', 0),
+                'week_label': task.get('week_label', week_label)
             })
     
     return week_summary
@@ -331,11 +380,7 @@ def generate_markdown_report(
     """生成Markdown格式报告"""
     
     current_date = datetime.now().strftime("%Y-%m-%d")
-    week_label = "未知周期"
-    
-    # 尝试从数据中获取周期信息
-    if week_summary['current_week']:
-        week_label = week_summary['current_week'][0].get('week_label', '未知周期')
+    week_label = week_summary.get('week_label', "未知周期")
     
     markdown = f"""# 设计师工时与项目分析报告  
 **周期**：{week_label}  
@@ -370,9 +415,9 @@ def generate_markdown_report(
 
 ---
 
-## 二、项目工时分布
+## 二、需求工时分布
 
-| 项目类别 | 项目名称 | 总工时（h） | 设计师 | 状态 |
+| 需求类别 | 需求名称 | 总工时（h） | 设计师 | 状态 |
 |----------|----------|------------|--------|------|
 """
     
@@ -398,7 +443,7 @@ def generate_markdown_report(
 
 ## 三、业务部门工作分布
 
-| 业务部门 | 项目数量 | 总工时（h） | 主要项目 |
+| 业务部门 | 需求数量 | 总工时（h） | 主要需求 |
 |----------|----------|------------|----------|
 """
     
@@ -509,21 +554,9 @@ def main(csv_files=None):
     if csv_files is None and page_ids:
         csv_files = find_csv_by_page_id(page_ids, "analyze")
     
-    # 如果仍然没有找到文件，尝试其他方式
+    # 如果未找到文件，则分析analyze目录下所有CSV文件
     if not csv_files:
-        # 方式1：指定具体文件路径（备用方案）
-        csv_files = ["analyze/W5_2026.02.06_2299396108_result_1770706795.csv",]
-        
-        # 方式2：使用通配符匹配多个文件
-        # csv_files = glob.glob(os.path.join("analyze", "*.csv"))
-        
-        # 方式3：从命令行参数获取
-        # import sys
-        # if len(sys.argv) > 1:
-        #     csv_files = sys.argv[1:]
-        # else:
-        #     print("请提供CSV文件路径作为参数")
-        #     return
+        csv_files = glob.glob(os.path.join("analyze", "*.csv"))
     
     if not csv_files:
         print("未找到CSV文件")

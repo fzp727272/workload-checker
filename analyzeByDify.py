@@ -140,17 +140,24 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
                         print(f"警告: 第 {idx} 行不是字典格式，已跳过")
 
                 if normalized_rows:
-                    # 1. 收集所有出现的字段
-                    all_fields = set()
-                    for row in normalized_rows:
-                        all_fields.update(row.keys())
-                    fieldnames = sorted(list(all_fields))  # 排序使列顺序固定
+                    # 只保留指定字段并按顺序输出
+                    desired_fields = [
+                        "week_label", "date_range", "category", "partner", "requirement",
+                        "Domain", "Tob/c", "designer", "po", "BU",
+                        "requirement_status", "requirement_time", "time_horizon"
+                    ]
 
-                    # 2. 检查每行缺少的字段，并记录警告
+                    # 过滤只保留 time_horizon 包含 "本周" 或 "本周工作" 等类似字段的行
+                    filtered_rows = [
+                        row for row in normalized_rows
+                        if any(keyword in str(row.get("time_horizon", "")).strip() for keyword in ("本周", "本周工作"))
+                    ]
+
+                    # 检查每行缺少的字段，并记录警告
                     missing_warnings = []
-                    for idx, row in enumerate(normalized_rows):
+                    for idx, row in enumerate(filtered_rows):
                         row_fields = set(row.keys())
-                        missing = all_fields - row_fields
+                        missing = set(desired_fields) - row_fields
                         if missing:
                             missing_warnings.append((idx, missing, row))
 
@@ -160,16 +167,21 @@ def save_result_to_file(result: Dict, original_file_path: str, output_dir: str) 
                             print(f"  行 {idx+1}: 缺失字段 -> {sorted(missing)}")
                             print(f"      行内容预览: {str(row)[:200]}...")
 
-                    # 3. 写入 CSV（所有行都保留）
+                    # 写入 CSV（只保留指定字段和顺序）
                     csv_filename = f"{Path(original_file_path).stem}_result.csv"
                     csv_path = os.path.join(output_dir, csv_filename)
-                    with open(csv_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
-                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore')
-                        writer.writeheader()
-                        writer.writerows(normalized_rows)
-
-                    print(f"CSV结果已保存到: {csv_path}")
-                    print(f"CSV包含 {len(normalized_rows)} 行数据，字段数: {len(fieldnames)}")
+                    try:
+                        with open(csv_path, 'w', encoding='utf-8-sig', newline='') as csvfile:
+                            writer = csv.DictWriter(csvfile, fieldnames=desired_fields, extrasaction='ignore')
+                            writer.writeheader()
+                            for row in filtered_rows:
+                                complete_row = {field: row.get(field, "") for field in desired_fields}
+                                writer.writerow(complete_row)
+                        print(f"CSV结果已保存到: {csv_path}")
+                        print(f"CSV包含 {len(filtered_rows)} 行数据，字段数: {len(desired_fields)}")
+                    except Exception as e:
+                        print(f"警告: 写入CSV文件时发生错误: {e}")
+                        csv_path = None
                 else:
                     print("警告: structured_output.data 没有可用的字典行，不生成CSV文件")
             else:
@@ -265,7 +277,8 @@ def load_relationship_mapping(mapping_file: str = "项目关系映射.csv") -> D
                     key_name = _normalize_mapping_key(raw_key)
                     key_stem = _normalize_mapping_key(Path(raw_key).stem)
                     mapping[key_name] = value
-                    if key_stem:
+                    # 避免 key_name 和 key_stem 相同导致覆盖
+                    if key_stem and key_stem != key_name:
                         mapping[key_stem] = value
     except Exception as e:
         print(f"警告: 读取关系映射CSV文件失败: {e}，relationship 将传入空值")
@@ -348,7 +361,7 @@ def main():
     WIKI_DIR = "wiki"  # wiki文件夹名称
     OUTPUT_DIR = "analyze"  # 结果输出目录
     DELAY_BETWEEN_REQUESTS = 2.0  # 请求间隔时间（秒）
-    RELATIONSHIP_MAPPING_FILE = "项目关系映射.json"  # 项目关系映射文件
+    RELATIONSHIP_MAPPING_FILE = "项目关系映射.csv"  # 项目关系映射文件
 
     API_KEY = ""
     if not os.path.exists(CONFIG_FILE):
@@ -358,7 +371,11 @@ def main():
 
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8-sig") as f:
-            config_data: Any = json.load(f)
+            config_content = f.read().strip()
+            if not config_content:
+                print("错误: 配置文件为空，请填写API密钥")
+                return
+            config_data: Any = json.loads(config_content)
     except (OSError, json.JSONDecodeError) as e:
         print(f"错误: 读取配置文件失败: {e}")
         return
@@ -375,6 +392,9 @@ def main():
     if not API_KEY:
         print("错误: config.json 中未设置 dify_api_key 或 api_key")
         print("请在 config.json 中添加: {\"dify_api_key\": \"your-api-key\"} 或 {\"api_key\": \"your-api-key\"}")
+        return
+    if not isinstance(API_KEY, str) or not API_KEY:
+        print("错误: API密钥无效，请检查 config.json 文件内容")
         return
     print(f"API密钥: {API_KEY[:10]}...")  # 只显示前10个字符
     print(f"Wiki目录: {WIKI_DIR}")
